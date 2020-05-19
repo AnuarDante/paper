@@ -1,0 +1,418 @@
+---
+title: "DIFICULTAD DE LOS ALUMNOS DE INGENIERÍA EN SISTEMAS PARA SER ACEPTADOS EN SU PRIMERA OPCIÓN DE PRÁCTICA PROFESIONAL"
+author: "Pablo Anuar Velasquez Davila"
+date: "18 de Mayo del 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/Users/Anuar Dante/Desktop/encuesta-Seminario-master")
+library(dplyr)
+library(ggplot2)
+library(caret)
+```
+
+## Introducción
+
+En este análisis tratamos de mostrar cuales son algunas de las razones o causas por las cuales los estudiantes de la carrera de ingeniería en sistemas de la UNAH pueden llegar a ser rechazados al momento de aplicar a un trabajo o su práctica profesional. 
+La recolección de estos datos se hizo mediante la aplicación de encuestas a los mismos estudiantes. Se conoce que para estos estudiantes es de suma importancia la realización de la práctica profesional y posteriormente la obtención de un trabajo, por lo que en este estudio se trata de mostrar cual sería una posible solución mediante la implementación de tecnología para prevenir situaciones de rechazo y asi aumentar los casos de éxito en lo que actualmente es una problemática por la que muchos estudiantes se ven afectados.
+
+
+
+## Variables capturadas
+
+```{r reading_dataset, echo=FALSE}
+survey <- read.csv("survey_cleaned.csv",sep = ",", header = T)
+
+str(survey)
+
+```
+
+**Como se puede observar se capturaron `r nrow(survey)` observaciones y `r length(names(survey))` columnas, estas fueron diseñadas en función de las siguientes categorías:**
+
+1. Demográficas
+2. Datos académicos
+3. Hábitos del estudiante
+4. Experiencias previas
+5. Hardskills
+6. Área de la empresa
+7. Solución tecnológica
+
+**A continuación se muestra un resumen rápido de nuestras columnas:**
+
+> ##### *Se debe tener en cuenta que toda la informacion recopilada en nuestra encuesta, se basa en variables categoricas por lo que este resumen no contiene datos de relevancia estadistica, sin embargo estas variables fueron tratadas por separado, y mas adelante en la seccion Analisis descriptivo de datos en este informe podemos observar, el tratamiento de estas variables para la obtencion de datos estadisticos de utilidad.*
+
+```{r}
+survey <- survey[,!(names(survey) %in% c("correo"))]
+for(name in names(survey)){
+  survey[,name]<-as.factor((survey[,name]))
+}
+summary(survey)
+```
+
+## Tratamiento de columnas
+
+**Uno de los tratamientos de valores nulos o vacios por lo que cambiamos los valores dependiendo el caso para algun tipo de tranformacion por ejemplo tratamos las siguientes columnas:**
+
+* ####Rubro_trabajo
+
+En algunas columnas se encontraban algunos datos que podrianser tratados por tener resultados vacios ("" o NA) por lo que se debe de hacer un tratamiento de datos para compreder mejor el resultado, veamos algunas de ellas como por ejemplo:
+
+```{r echo=FALSE}
+survey <- read.csv("survey_cleaned.csv",sep = ",", header = T)
+
+(table(survey$rubro_trabajo))
+```
+
+Como podemos ver tenenemos 23 datos que estan vacios ("") para la correccion se decio reemplazar ese vacio de los datos por "NO" ya que el encuetado no tiene rubro de trabajo o no tienen trabajo por tanto se modifico de la siguiente manera con el siguiete codigo.
+
+```{r echo=TRUE}
+survey$rubro_trabajo[survey$rubro_trabajo == ""] <- "No"
+```
+
+Modificando las varibles de respuesta quedando de la siguiente manera:
+
+```{r echo=FALSE}
+(table(survey$rubro_trabajo))
+```
+
+Ahora notamos que el valor de las respuestas vacias esta en cero y las respuestas en "NO" aumentaron mejorando el comportamiento de los datos para un mejor control.
+
+* ####Trabaja
+
+Otra columna que necesitaba tratamiento era la columna con la variable Trabaja en esa columna una respuesta venia con un comenetario innecesario que seria el siguiente
+
+```{r echo=FALSE}
+survey <- read.csv("survey_cleaned.csv",sep = ",", header = T)
+
+(table(survey$trabaja))
+```
+
+"No (si su respuesta es "No" puede dar clic en siguiente)" este comentario se mostraba al momneto de generar graficos por lo que los graficos no quedaban bien esteticamente se quito esa descrpcion con un simple reeplazo a la respuesta utilizando el siguiete codigo:
+
+```{r echo=TRUE}
+survey$trabaja[survey$trabaja == "No (si su respuesta es \"No\" puede dar clic en siguiente)"] <- "No"
+```
+
+como podemos apreciar en el codigo hay algo diferente con respecto a la descripcion que se habia dado anteriormente, notamos que dentro del string para poder saber que respuesta queriamos reemplazar hay otras comillas provocando un error de sintaxis por lo que se coloco antes de las comillas una contrapleca para quitar las comillas y que RStudio pudiera leerla como comillas dentro del string de esta manera quedo lo siguiente:
+
+```{r echo=FALSE}
+(table(survey$trabaja))
+```
+
+Ya reeplazado la descripcion innecesaria por un simple NO viendose de una manera mas sencilla y agradable a la vista.
+
+## Analisis descriptivo de datos
+
+**En esta seccion momenzamos mostramos algunos graficos estadisticos para el ver comportamiento de la variable y si es necesario hacer una tranformacion de sus caracteristicas para mejorar sus interpretacion.**
+
+* #### Edad
+
+Comenzamos viendo la distribucion de las frecuencia de repeticion porcentualmente de los diferentes datos motrandolos en la siguiente tabla de mayor a menor de arriba hacia abajo:
+
+```{r echo=FALSE}
+survey$edad <- as.factor(survey$edad)
+
+df_perc <- as.data.frame(prop.table(table(survey$edad))*100)#asignamos el resultado de la linea anterior a la variable df
+
+df_perc <- df_perc %>% arrange(-Freq) #ordena los datos en orden descendente con el signo (-) y lo deja guardado en df_perc
+
+df_perc
+
+```
+
+* #### caja de bigotes
+
+El siguiente grafico es conocido como caja de bigotes nos muestran la distribucion de una variable usando cuartiles asi podemos inferir algunas cosas como su dispersion, ubicacion y simetria.
+
+```{r echo=FALSE}
+boxplot(df_perc$Freq)
+```
+
+Por ejemplo tenemos la varible Edad en el grafico notamos que las frecuencias logran tener una mediana abarcada del 38% teniendo los máximos donde tenemos los años de entre los 20 a 25 años y los mínimos de entre los valores de 26-30 años y una pequeña cantidad entre los años del 30 o más. 
+
+* #### Histograma
+
+El histograma nos permite observar la distribución de datos usando barras. Cada barra representa el número de veces (frecuencia) que se observaron datos en un rango determinado en este caso de la variable Edad y tal paraece son muy parecidas las frecuencias.
+
+```{r echo=FALSE}
+hist(x = df_perc$Freq, main = "Histograma de Edad", 
+     xlab = "Edad", ylab = "Frecuencia",
+     col = "blue", ylim = c(0,2), xlim = c(0,80))
+```
+
+* #### Grafico QQ-Normal
+
+En el grafico QQ-norm vemos que tan cerca esra la distribucion de la variable de la manera mas ideal o normal y los datos se muestran como una linea diagonal que va a traves del grafico en este caso podemos ver que cada punto sigue la linea demostrando que los datos tienen una distribucion normal.
+
+```{r echo=FALSE}
+qqnorm(df_perc$Freq)
+```
+
+## Correlaciones
+
+* #### Edad vs indice
+
+En la siguiente tabla mostramos las proporsiones respecto al total de los valores de la variable o en este caso dentro de una tabla.
+
+```{r echo=FALSE}
+prop.table(table(survey$rango_indice,survey$edad),1)
+```
+
+Las proporsiones estan ciendo calculadas por fila notamos la cantidad de resultados que hay de edad en proporcion al indice un ejemplo se puede deci que hay mas personas de 20 a 25 años de edad con un indice de 81 o mas pero para verlo mas claro lo mirariamos en un grafico como el siguiente:
+
+```{r echo=FALSE}
+
+ggplot(survey) +
+  aes(x= rango_indice, fill=factor(edad))+
+  geom_bar(position='stack')+
+  theme(axis.text.x = element_text(angle = 45))
+
+```
+
+Con el grafico podemos ver la informacion de una mas sencilla manera como por ejemplo que no solo las personas que tienen edad de 20 a 25 tienen buen indice academico sino que tienen un rendimieto bajo tambien hay personas de 26 a 30 años incluidas alli y son las que mas en consideracion hay que tener para mejorar.
+
+En la ultima barra hay diferentes personas de todas las edades que tienen un buen indice entoces que podemos decir ¿qué la edad influye en el indoce academico? aclaremos entoces
+
+```{r echo=FALSE}
+chisq.test(table(survey$rango_indice,survey$edad))
+```
+
+Tenemos nuestras hipotesis
+
+H_O: Las categorias Indice y Edad son independientes.
+H_A: Las categorias son dependentes.
+
+Reglas: Aceptamos nuestras hipotesis nula cuando el p-value de nuestra prueba chis.test es menos a 0.05
+
+conclusion: Segun nuetra p-value la hipostesis nula es rechazada, por lo tanto las variables son dependientes.
+
+* #### Trabaja vs indice
+
+En la siguiente correlacion mostramos las proporsiones respecto al total de los valores de la variable Trabaja vs Rango_Indice dentro de una tabla.
+
+```{r echo=FALSE}
+prop.table(table(survey$trabaja,survey$rango_indice),1)
+```
+
+Las proporsiones estan ciendo calculadas por fila como en la correlacion anterior, ahora en esta correlacion notamos que la mayoria de los estudiandetes que trabajan estan con un indice de 80 o mas mostrando que tienen buen rendimiento y ademas tenemos datos interesantes pero para verlo mas claro lo mirariamos en un grafico como el siguiente:
+
+```{r echo=FALSE}
+ggplot(survey) +
+  aes(x= rango_indice, fill=factor(trabaja))+
+  geom_bar(position='stack')+
+  theme(axis.text.x = element_text(angle = 45))
+```
+
+Como siempre en el grafico se muestra los datos de una manera mas simple de leer demostramos que los estudiantes que estan en los rangos de indece de 71 a 80 y trabajan no tienen mal rendimiento sino un rendimiento medio y que los que tienen rendimiento bajo tienen dificultades aunque son muy pocas personas por lo que al parecer el trabajo no afecta al indice en ocaciones hasta podria mejorarlo por la experiencia ya adquirida. 
+
+```{r echo=FALSE}
+chisq.test(table(survey$rango_indice,survey$trabaja))
+```
+Tenemos nuestras hipotesis
+
+H_O: Las categorias Indice y Edad son independientes.
+H_A: Las categorias son dependentes.
+
+Reglas: Aceptamos nuestras hipotesis nula cuando el p-value de nuestra prueba chis.test es menos a 0.05
+
+conclusion: Segun nuetra p-value la hipostesis nula es rechazada, por lo tanto las variables son dependientes incluso ya demostrado con las graficos.
+
+* #### estudiante_foraneo vs rendimiento_academico
+
+En la siguiente correlacion mostramos las proporsiones respecto al total de los valores de la variable estudiante_foraneo vs rendimiento_academico dentro de una tabla.
+
+```{r echo=FALSE}
+prop.table(table(survey$estudiante_foraneo,survey$rendimiento_academico),2)
+```
+
+Las proporsiones estan ciendo calculadas por columnas, ahora en esta correlacion notamos que la mayoria de los encuestados se encuentran en un rendimiento medio ademas de no ser esntudiantes foraneos viendo los resultados a traves de las columnas es un poco mas dificil de leer asi que para verlo mas claro lo mirariamos en un grafico como el siguiente:
+
+```{r echo=FALSE}
+ ggplot(survey) +
+  aes(x= rendimiento_academico, fill=factor(estudiante_foraneo))+
+  geom_bar(position='stack')+
+  theme(axis.text.x = element_text(angle = 45))
+```
+
+Con el grafico los datos los notamos mas claramente vemos lo que ya habiamos dicho anterirmente que la mayoria de los encuestados se encuetran en rendimieto medio y hay un agran cantidad de estudiantes no foraneos que son estudiantes que le servira mas la plataforma por las normas que da la Universidad de que las practicas tienen que ser localmente, podemos ver que hay muy pocos que son estudiantes foraneos tanto de rendimiento bajo , medio y alto pero gracias a la plataforma podran encontrar un lugar que se adecue a ellos.
+
+```{r echo=FALSE}
+chisq.test(table(survey$rendimiento_academico,survey$estudiante_foraneo))
+```
+
+Tenemos nuestras hipotesis
+
+H_O: Las categorias Indice y Edad son independientes.
+H_A: Las categorias son dependentes.
+
+Reglas: Aceptamos nuestras hipotesis nula cuando el p-value de nuestra prueba chis.test es menos a 0.05
+
+conclusion: Segun nuetra p-value la hipostesis nula es rechazada, por lo tanto las variables son dependientes.
+
+## Explicativa 
+
+En esta seccion buscamos mostrar las razones o causas que den respuesta a nuestra pregunta de investigacion. y asi tratar de explicar mediante la comprobación de nuestra hipótesis por qué ocurre este fenómeno.
+
+
+* ### Regresiones 
+
+Recopilamos todas las variables que son importantes para verificar cual es la más influyente con respecto a la de respuesta para ello necesitamos la recopilación a través de RStudio demostrando lo siguiente:
+
+
+```{r echo=FALSE}
+prop.table(table(survey$rechazo_en_entrevista))
+```
+
+```{r echo=FALSE}
+features <- c(
+  "edad", 
+  "rango_indice", 
+  "nuevas_habilidades_autodidacta",
+  "rendimiento_academico", #survey$area_preferida
+  #"area_preferida",
+  "estudiante_foraneo",
+  "trabaja",
+  "rechazo_en_entrevista"
+)
+set <- survey[, names(survey) %in% features ]
+set$rechazo_en_entrevista  <- as.factor(set$rechazo_en_entrevista)
+model <- glm(rechazo_en_entrevista ~ ., data = set, family = "binomial")
+importances <- varImp(model)
+importances$colum <- row.names(importances)
+importances <- importances %>% arrange(-Overall)
+importances
+model
+```
+
+Ya recopilados las variables más influyentes con la regresion aplicada, ordenadas de la más importante a la que menos porcentaje posee, de acuerdo a la variable de respuesta  “Rango_indice” es la más influyente teniendo la mayor importancias, para verlo de una manera más clara recopilaremos cada variable con sus respectivos gráficos.
+
+
+```{r echo=FALSE}
+ggplot(set) +
+  aes(x= rango_indice, fill=factor(rechazo_en_entrevista))+
+  geom_bar(position='fill')+
+  theme(axis.text.x = element_text(angle = 45))+
+  scale_fill_manual(values=c("#999999","#E69F00"))
+```
+
+
+Como se muestra en el grafico anterior el rechazo de las entrevistas se da menos para aquello estudiantes que tienen el índice mayor o igual a 81 los que se encuentran en excelencia académica algo notable se puede ver que las o los estudiantes que tienen mayor rechazo son los que tienen un índice menor a 71 esta parte de la población ayudaría la plataforma a encontrar una empresa que busca que los estudiantes tengan buen desarrollo de actividades y un índice medio ayudando que el rechazo baje sin importar el índice académico. Notamos que la barra del índice 76-80 se nota que hay más rechazo, pero no es así, en esa barra la cantidad de personas que tienen ese índice es mayor a la cantidad de personas que están en los índices anteriores, comparando con las barras anteriores notamos que los porcentajes de rechazo son menores.
+
+
+```{r echo=FALSE}
+ggplot(set) +
+  aes(x= estudiante_foraneo, fill=factor(rechazo_en_entrevista))+
+  geom_bar(position='fill')+
+  theme(axis.text.x = element_text(angle = 45))+
+  scale_fill_manual(values=c("#999999","#E69F00"))
+```
+
+Logramos apreciar en el grafico anterior que los estudiantes que son foráneos tienen mayor aceptación en las entrevistas consiguiendo la aprobación de las empresas para realizar la práctica profesional, en comparación a los estudiantes que viven en la capital ellos demuestran que tienden a ser más rechazados por las empresas, aquí pondríamos más atención a los estudiantes que son foráneos para que la plataforma baje el índice de rechazo.
+
+
+
+```{r echo=FALSE}
+ggplot(set) +
+  aes(x= trabaja, fill=factor(rechazo_en_entrevista))+
+  geom_bar(position='fill')+
+  theme(axis.text.x = element_text(angle = 45))+
+  scale_fill_manual(values=c("#999999","#E69F00"))
+```
+
+
+Claramente como vemos en el grafico anterior notamos que las personas que trabajan tienen más aceptación y menos rechazo por parte de las empresas dado que los estudiantes tienen un poco de experiencia en el ámbito laboral, aunque en la barra de las personas que no trabajan también notamos que, aunque hay más rechazo también hay aceptación, con la plataforma ayudara demostrando que las empresas aceptan a los estudiantes para darles una oportunidad en el campo laboral aunque no tengan experiencia en este.
+
+
+```{r echo=FALSE}
+ggplot(set) +
+  aes(x= edad, fill=factor(rechazo_en_entrevista))+
+  geom_bar(position='stack')+
+  theme(axis.text.x = element_text(angle = 45))+
+  scale_fill_manual(values=c("#999999","#E69F00"))
+```
+
+En el grafico anterior vemos que los estudiantes que tienen años de 20-25 tienen menos rechazo en las entrevistas por parte de las empresas, notamos las mismas circunstancias en la barra de las edades de 26-30, podemos decir que las empresas tienen una mayor aceptación a los estudiantes que están a una edad de 20 a 25 años además de que la mayoría de los encuestados son muy jóvenes dándoles más posibilidades de ser aceptados, y a los estúdiates con mayoría de edad tienen aceptación pero no podemos decir que la tiene o no, por la poca cantidad de datos en la ultima proyeccion. 
+
+
+
+```{r echo=FALSE}
+ggplot(set) +
+  aes(x= rendimiento_academico, fill=factor(rechazo_en_entrevista))+
+  geom_bar(position='stack')+
+  theme(axis.text.x = element_text(angle = 45))+
+  scale_fill_manual(values=c("#999999","#E69F00"))
+```
+
+En el grafico anterior vemos con claridad que el estudiantado que tiene alto rendimiento académico obviamente consigue menos rechazo por parte de las empresas, notamos que el rendimiento medio del estudiantado es más sujeto a ser rechazado, sin embargo, también tienen un gran número de aceptación, notamos que hay gran cantidad de población donde la plataforma seria muy útil para bajar el índice de rechazo. 
+
+
+
+* ### Solucion tecnologica
+
+Con toda la informacion mostrada anteriormente, vemos como el problema de nuestro estudio necesita una solucion, para este caso en particular se propone una solucion basada en tecnologia
+a continuacion mostramos en que consite nuestra solucion:
+
+
+![Ilustración Arquitectura propuesta tecnológica Fuente: (Propia, Fuente Propia, 2020)](https://github.com/victor-sanchez-ccc/Tesis/blob/master/Division%20solucion%20Tecnologica/Diagrama%20Aquitectura%20Solucion%20Tecnologica.jpg?raw=true)
+
+<br/>
+Esta solución tecnológica está diseñada y pensada para ser utilizada en diferentes plataformas y dispositivos a través de la web, esto nos da la facilidad y flexibilidad de llegar al mayor número de usuarios, simplificando costos y esfuerzo de desarrollo  y así mismo ser un producto multiplataforma y multi sistema operativo, ya que únicamente se necesitara un explorador web y una conexión a internet.
+ Buscamos que nuestro sistema sea de rápida implementación y fácilmente escalable, para un futuro crecimiento exponencial , ya que el área de nuestra investigación es una de las áreas más demandadas  en el país el área laboral. 
+Para lograr esta escalabilidad, y obtener una  fácil y rápida implementación destacamos el almacenamiento de información en la nube a través de amazon. Utilizando su gama de servicios en la nube de su plataforma online Amazon Web services junto los servicios de Amazon ML (Machine Learning).
+
+<br/>
+
+
+* #### Comunicación de servicios
+
+![Servicio Usuario Servidor](https://github.com/victor-sanchez-ccc/Tesis/blob/master/Division%20solucion%20Tecnologica/parte%201.png?raw=true)
+
+
+En este pequeño diagrama podemos ver como esta estructurado el servicio de acceso del usuario a el sistema, en este punto la interacción que buscamos es que sea de la manera mas sencilla posible para que cualquiera pueda tener acceso y sea de fácil uso, básicamente los requisitos para el usuario es contar con cualquier dispositivo que se conecte a internet y contar con una conexión de datos de internet, con esto logramos ser accesibles desde cualquier plataforma sin importar si es un dispositivo móvil , computadora, o sin importar el sistema operativo del usuario.
+La funcionalidad de este servicio es básicamente lograr la interacción y recopilación de datos con el usuario, este diagrama en especifico si se presta una atención detallada al diagrama general se puede observar como se divide en 2 servicios, esto es porque un servicio será la interacción con las empresas que proveerán de datos de ofertas laborales al sistema, y el otro es la interacción del usuario que proveerá de datos de su perfil personal y sus preferencias personales al sistema, como se puede ver aunque son servicios que funcionaran por separado tienen la misma lógica aplicada en este diagrama en el cual podemos ver que la funcionalidad principal que buscamos con este servicio es la recolección de datos .
+Donde el usuario ingresa a la plataforma de Integración Empresarial a través de internet generando con esto una interacción entre el sitio web alojado en servidores web de amazon  contra el api del backend también alojada en los servidores de la nube de Amazon, luego posterior mente el api servirá como intermedio entre los datos del usuario y la base de datos ya sea para almacenar la información ingresada por el usuario o para consultarla siendo la función principal del api servir o almacenar mediante la base de datos, información de relevancia para  el usuario.
+
+
+
+![Servicio Recoleccion de ofertas de apis de terceros](https://github.com/victor-sanchez-ccc/Tesis/blob/master/Division%20solucion%20Tecnologica/parte%202.png?raw=true)
+
+
+En este diagrama queremos mostrar como tendremos un segundo servicio de recolección de datos para el área de ofertas laborales que estarán disponibles en nuestro sitio, como se menciono en la parte anterior existe un acceso para empresas que dotara de información de cv a nuestra base de datos, pero este puede que no sea siempre el caso, y si esto sucede dejaría prácticamente sin funcionalidad nuestra plataforma, para solucionar este problema y dotar de dinamismo nuestro sitio y que no dependa de alguien que alimente de ofertas laborales se implementa el servicio de recolección de data de Apis de terceros, este consistirá en básicamente consultar sitios web que tengan ofertas laborales y obtener estos datos en una comunicación directa entre nuestra api y las Apis de terceros donde nuestra api hará peticiones a las Apis de terceros recolectando así estas ofertas laborales , y buscando estructurar esta información para almacenarla en nuestra base de datos. En caso de que esta información obtenida no sea de forma estructurada ya que puede venir de archivos de texto, pdf, archivos json etc, nuestra api lo que hará con esta información no estructurada será almacenarla tal cual la encontró en el almacenamiento de amazon S3 o blob storage donde esto nos permitirá ser accedida mas adelante para darle un tratamiento especial a estos datos para luego mostrar estos al usuario.
+El objetivo principal que buscamos con este servicio claramente es la recopilación de la mayor cantidad de ofertas laborales para tener una gran variedad de opciones en nuestra data y que este así disponible para nuestros usuarios.
+
+
+
+![Servicio deAmazon ML (Machine Learning)](https://github.com/victor-sanchez-ccc/Tesis/blob/master/Division%20solucion%20Tecnologica/parte%203.png?raw=true)
+
+
+la base de nuestro sistema serán las recomendaciones , pero no queremos que sean cualquier tipo de recomendaciones de forma aleatoria, queremos lograr que nuestro sistema tenga un plus, y para esto queremos sacar ventajas del machine learning .
+Los sistemas de recomendación de contenidos se han hecho muy populares en los últimos años. Entre los ámbitos más extendidos se encuentran las recomendaciones de productos en tiendas online, películas, vídeos, música, libros, productos o recomendaciones de perfiles. 
+Los Sistemas de Recomendación intentan personalizar al máximo lo que ofrecerán a cada usuario.
+A nivel de nuestra arquitectura se puede observar el servicio de ML (Machine Learning), y atraves de estos servicios que ofrece amazon web services de ML (Machine Learning), queremos llegar a lograr este objetivo, ya que con estas soluciones que nos ofrece esta empresa es mucho más fácil, rápido y menos costoso implementar este tipo de sistemas aprovechando las herramientas de ML (Machine Learning) que amazon pone a nuestro alcance esto se hace posible. Como podemos observar en nuestra arquitectura para llegar a este servicio en especifico hacemos un flujo de recolección de datos previamente para así crear nuestro dataSet que puede ser de datos estructurados (sql) almacenados en la base de datos o datos no estrucurados(pdf,texto,json..etc) que estarian almacenados en el blob storage y asi dotar de la información valiosa y necesaria a nuestro servicio de ML (Machine Learning) para así poder trabajar estos datos.
+Con todo esto lograríamos exprimir estas ventajas de ML (Machine Learning), y así lograr un sistema de recomendación afinado para nuestro caso de estudio donde gestionaríamos nuestro Collaborative Filtering, pues utiliza la información de «masas» para identificar perfiles similares y aprender de los datos para recomendar productos de manera individual en nuestro caso ofertas laborales personalizadas. 
+
+![Servicio de notificaciones al usaurio](https://github.com/victor-sanchez-ccc/Tesis/blob/master/Division%20solucion%20Tecnologica/parte%204.png?raw=true)
+
+En este pequeño diagrama podemos ver como está estructurado el servicio de notificaciones al usuario, este servicio básicamente, funcionara mediante la comunicación de correo electrónico y esta se lograra gracias a otra de las opciones que nos brinda la plataforma de amazon en la nube que es el Amazon Simple Email Service (ASES).
+El objetivo general de este servicio es comunicar al usuario de ofertas laborales que pueden ser de su interés , pero este servicio en específico para nuestro sistema lo hemos dividido en dos partes a nivel de funcionalidad.
+La primera parte es donde buscamos trabajar por el estudiante de la UNAH mucho antes de que el incluso separa que esta herramienta en línea existe, esto lo logramos comunicando nuestra api directamente con la api de la universidad (UNAH) donde de ellos obtendremos únicamente el correo institucional, siendo esta una información que la unah provee de forma publica a los maestros todos los periodos, nosotros la solicitaremos a través de nuestra api únicamente de los estudiantes que tengan la característica o que estén catalogados por la UNAH como estudiantes por egresar , enviando así ofertas laborales almacenadas en nuestro sistema como mostramos en los diagramas previos, y que sean del interés del estudiante acorde a su área de estudio directamente a su correo electrónico.
+La segunda parte de esta es que si un estudiante le parece interesante la información que está recibiendo a través de su correo electrónico mediante nuestra plataforma, puede acceder a este y registrarse como un usuario, llenar su perfil, detallando sus intereses personales y laborales, luego nuestro sistema analizaría sus datos y mediante ML (Machine Learning), buscaríamos para este la oferta laborales que mas se ajusten a su perfil mediante el sistemas de recomendación de perfiles laborales, siendo este estudiante nuevamente notificado mediante correo electrónico y mostrándole asi que se encontró una coincidencia para su perfil.
+
+<br/>
+<br/>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
